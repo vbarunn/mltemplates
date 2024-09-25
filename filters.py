@@ -6,6 +6,7 @@ PREVIEW  = 0  # Preview Mode
 BLUR     = 1  # Blurring Filter
 FEATURES = 2  # Corner Feature Detector
 CANNY    = 3  # Canny Edge Detector
+HAIR      = 4  # Hair Segmentation Mode  # <-- Added this line
 
 feature_params = dict(maxCorners=500, qualityLevel=0.2, minDistance=15, blockSize=9)
 s = 0
@@ -35,12 +36,20 @@ while alive:
     elif image_filter == BLUR:
         result = cv2.blur(frame, (13, 13))
     elif image_filter == FEATURES:
-        result = frame
-        frame_gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-        corners = cv2.goodFeaturesToTrack(frame_gray, **feature_params)
-        if corners is not None:
-            for x, y in numpy.float32(corners).reshape(-1, 2):
-                cv2.circle(result, (x, y), 10, (0, 255, 0), 1)
+        result = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+    elif image_filter == HAIR:
+        # Hair segmentation using color thresholding
+        hsv = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
+        # Define range for hair color in HSV
+        lower_hair = numpy.array([0, 0, 0])
+        upper_hair = numpy.array([179, 255, 90])
+        mask = cv2.inRange(hsv, lower_hair, upper_hair)
+        # Apply morphological operations to clean up the mask
+        kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (5, 5))
+        mask = cv2.morphologyEx(mask, cv2.MORPH_OPEN, kernel, iterations=2)
+        mask = cv2.morphologyEx(mask, cv2.MORPH_CLOSE, kernel, iterations=2)
+        # Apply mask to the frame
+        result = cv2.bitwise_and(frame, frame, mask=mask)
 
     cv2.imshow(win_name, result)
 
@@ -55,6 +64,9 @@ while alive:
         image_filter = FEATURES
     elif key == ord("P") or key == ord("p"):
         image_filter = PREVIEW
+    elif key == ord("H") or key == ord("h"):
+        image_filter = HAIR  # <-- Added this line
+
 
 source.release()
 cv2.destroyWindow(win_name)
